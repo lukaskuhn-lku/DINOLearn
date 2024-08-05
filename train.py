@@ -21,8 +21,8 @@ def main():
           """)
     
     run = wandb.init(
-        project="DINO ISIC24",
-        tags=["dino", "isic", "vit"],
+        project="DINO Cifar10",
+        tags=["dino", "cifar10", "vit"],
     )
 
     vit_name, dim = "vit_base_patch16_224", 768
