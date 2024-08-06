@@ -95,7 +95,7 @@ class DINOHead(nn.Module):
 class MultiCropWrapper(nn.Module):
     def __init__(self, backbone, new_head):
         super().__init__()
-        backbone.head = nn.Identity()
+        backbone.fc = nn.Identity()
         self.backbone = backbone
         self.new_head = new_head
 
@@ -137,10 +137,11 @@ class DINOLoss(nn.Module):
 
         total_loss /= n_loss_terms
         self.update_center(teacher_output)
+
         return total_loss
     
     @torch.no_grad()
     def update_center(self, teacher_output):
-        batch_center = torch.cat(teacher_output).mean(dim=0, keepdim=True)
+        batch_center = torch.cat(teacher_output).mean(dim=0, keepdim=True)  
 
-        self.center = self.center * self.center_momentum + batch_center * (1-self.center_momentum)
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)

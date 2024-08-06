@@ -7,9 +7,11 @@ from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
+from torchvision.models import resnet18
 
 from dino import DINOAugmentations, DINOHead, DINOLoss, MultiCropWrapper
 from utils import compute_knn, gradient_clipping
+from dataset import load_isic_subset
 
 def main():
     print("DINO Training started")
@@ -25,15 +27,15 @@ def main():
         tags=["dino", "cifar10", "vit"],
     )
 
-    vit_name, dim = "vit_base_patch16_224", 768
+    vit_name, dim = "deit_tiny_patch16_224", 192
 
     device = "cuda" if torch.cuda.is_available() else "mps"
 
     n_workers = 4
-    n_local_crops = 4
+    n_local_crops = 8
     batch_size = 32
     out_dim = 1024
-    weight_decay = 0.4
+    weight_decay = 1e-4
     epochs = 100
     momentum_teacher = 0.995
 
@@ -45,9 +47,11 @@ def main():
         transforms.Resize(224)
     ])
 
-    dataset_train = CIFAR10(root='data', download=True, train=True, transform=transform_aug)
-    dataset_train_knn = CIFAR10(root='data', download=True, train=True, transform=transform_norm)
-    dataset_val_knn =  CIFAR10(root='data', download=True, train=False, transform=transform_norm)
+    #dataset_train = CIFAR10(root='data', download=True, train=True, transform=transform_aug)
+    #dataset_train_knn = CIFAR10(root='data', download=True, train=True, transform=transform_norm)
+    #dataset_val_knn =  CIFAR10(root='data', download=True, train=False, transform=transform_norm)
+
+    dataset_train, dataset_train_knn, dataset_val_knn = load_isic_subset(10000, transform_aug, transform_norm)
 
     data_loader_train_aug = DataLoader(dataset_train, batch_size, shuffle=True, drop_last=True, num_workers=n_workers, pin_memory=True)
     data_loader_train_plain = DataLoader(dataset_train_knn, batch_size, shuffle=True, drop_last=False, num_workers=n_workers)
@@ -84,7 +88,7 @@ def main():
         out_dim
     ).to(device)
 
-    lr = 0.0005 * batch_size / 256
+    lr = 1e-3
     optimizer = torch.optim.AdamW(
         student.parameters(),
         lr=lr,
@@ -124,13 +128,13 @@ def main():
 
         wandb.log({"knn_acc": current_acc})
 
-        torch.save(student.state_dict(), f"models/student_{e}.pth")
-        torch.save(teacher.state_dict(), f"models/teacher_{e}.pth")
-        torch.save(student.backbone.state_dict(), f"models/student_backbone_{e}.pth")
+        #torch.save(student.state_dict(), f"models/student_{e}.pth")
+        #torch.save(teacher.state_dict(), f"models/teacher_{e}.pth")
+        #torch.save(student.backbone.state_dict(), f"models/student_backbone_{e}.pth")
 
-        run.log_model(path="models/student_backbone_{e}.pth", name=f"student_backbone_{e}")
-        run.log_model(path="models/student_{e}.pth", name=f"student_{e}")
-        run.log_model(path="models/teacher_{e}.pth", name=f"teacher_{e}")
+        #run.log_model(path="models/student_backbone_{e}.pth", name=f"student_backbone_{e}")
+        #run.log_model(path="models/student_{e}.pth", name=f"student_{e}")
+        #run.log_model(path="models/teacher_{e}.pth", name=f"teacher_{e}")
 
 if __name__ == "__main__":
     main()
